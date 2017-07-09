@@ -1,17 +1,17 @@
 package linktera;
 
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
 
 import org.bson.Document;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
-import org.springframework.web.bind.MissingServletRequestParameterException;
+
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 
@@ -32,10 +32,10 @@ public class LoginController {
 	
 	@RequestMapping(value = "/adminlogin", method = RequestMethod.POST)
     public String adminLogin(HttpSession session, ModelMap model, @RequestParam String email,
-								@RequestParam String password) throws MissingServletRequestParameterException {
+								@RequestParam String password) {
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		
     	try {
 	    	
@@ -47,17 +47,13 @@ public class LoginController {
 	    		session.setAttribute("email", doc.getString("email"));
 	    		session.setAttribute("name", doc.getString("name"));
 		        session.setAttribute("type", "admin");
-		        mongoClient.close();
 		        return "home";
 	    	} else {
 	    		model.addAttribute("error", "Login Failed"); 		
 	    	}
     	} catch (Exception ex) {
     		ex.printStackTrace();
-    	} finally {
-    		mongoClient.close();
     	}
-    	
     	return "adminlogin";	
     }
 	
@@ -69,10 +65,10 @@ public class LoginController {
 	
 	@RequestMapping(value = "/userlogin", method = RequestMethod.POST)
     public String userLogin(HttpSession session, ModelMap model, @RequestParam String email,
-								@RequestParam String password) throws MissingServletRequestParameterException {
+								@RequestParam String password) {
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		
     	try {
 	    	FindIterable<Document> iterable = db.getCollection("users").find(
@@ -90,8 +86,6 @@ public class LoginController {
 	    	}
     	} catch (Exception ex) {
     		ex.printStackTrace();
-    	}	finally {
-    		mongoClient.close();
     	}  	
     	return "userlogin";
     }

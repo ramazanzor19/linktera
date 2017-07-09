@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
 
 import org.bson.Document;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 
@@ -42,8 +42,8 @@ public class RezervationController {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 	    	FindIterable<Document> iterable = db.getCollection("books").find(
 	                new Document("id", bookid));
@@ -96,10 +96,7 @@ public class RezervationController {
 	    	doc.append("return", "bekleniyor");
 	    	db.getCollection("rezervations").insertOne(doc);
 		} catch (Exception ex) {
-			ex.printStackTrace();
-			
-		} finally {
-			mongoClient.close();
+			ex.printStackTrace();	
 		}
 		return "redirect:/rezervations";
     }
@@ -112,8 +109,8 @@ public class RezervationController {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try { 
 			List<Document> rezervations = (List<Document>) db.getCollection("rezervations").find().into(
 						new ArrayList<Document>());
@@ -123,8 +120,6 @@ public class RezervationController {
 			
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "rezervation/all";
 		
@@ -150,8 +145,8 @@ public class RezervationController {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 	    	FindIterable<Document> iterable = db.getCollection("rezervations").find(
 	                new Document("bookid", bookid).append("studentid", studentid).append("return", "bekleniyor"));
@@ -182,8 +177,6 @@ public class RezervationController {
 	    	
 		} catch (Exception ex){
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "redirect:/rezervations";
     }

@@ -3,19 +3,19 @@ package linktera;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
-import org.springframework.web.bind.MissingServletRequestParameterException;
+
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 
@@ -34,35 +34,35 @@ public class LibrarianController {
 		}
     }
 	
-	@SuppressWarnings("finally")
 	@RequestMapping(value = "/newlibrarian", method = RequestMethod.POST)
     public String newLibrarian(HttpSession session, ModelMap model, @RequestParam String name,
 					@RequestParam String email, @RequestParam String password,
-					@RequestParam String phone) throws MissingServletRequestParameterException {
+					@RequestParam String phone){
 		
 		String type = (String) session.getAttribute("type");
 		if (!type.equals("admin")) {
 			return "home";
 		}
+		// look if email is valid
 		ValidationService service = new ValidationService();
 		if (!service.validateEmail(email)) {
 			model.addAttribute("error", "Email adresi geçerli değil");
     		return "librarian/new";	
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 	    	FindIterable<Document> iterable = db.getCollection("users").find(
 	                new Document("email", email));
 	 
 	    	Document doc = iterable.first();
-	    
+	    	// look if email exist
 	    	if (doc != null) {
 	    		model.addAttribute("error", "Email daha önce kullanılmış");
-	    		mongoClient.close();
 	    		return "librarian/new";
 	    	}
+	    	// add librarian
 	    	doc = new Document();
 	    	doc.append("email", email);
 	    	doc.append("name", name);
@@ -72,13 +72,10 @@ public class LibrarianController {
 	    	System.out.println("librarian added");
 	    	
 		} catch (Exception ex) {
-			ex.printStackTrace();
-			
-		} finally {
-			mongoClient.close();
-			return "redirect:/librarians";
+			ex.printStackTrace();	
 		}
 		
+		return "redirect:/librarians";
     }
 	
 
@@ -90,8 +87,8 @@ public class LibrarianController {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try { 
 			List<Document> librarians = (List<Document>) db.getCollection("users").find().into(
 						new ArrayList<Document>());
@@ -100,23 +97,21 @@ public class LibrarianController {
 			
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "librarian/all";
-		
     }
 	
 	@RequestMapping(value = "/updatelibrarian/{id}", method = RequestMethod.GET)
-    public String updateLibrarianPage(HttpSession session, ModelMap model, @PathVariable("id") String id) {
+    public String updateLibrarianPage(HttpSession session, ModelMap model,
+    								@PathVariable("id") String id) {
 		
 		String type = (String) session.getAttribute("type");
 		if (!type.equals("admin")) {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 			ObjectId object = new ObjectId(id);  
 	    	FindIterable<Document> iterable = db.getCollection("users").find(
@@ -125,15 +120,11 @@ public class LibrarianController {
 	    	Document doc = iterable.first();
 	    	
 	    	if (doc != null) {
-	    		System.out.println("librarian: " + doc.getString("name"));
 	    		model.addAttribute("librarian", doc);
 	    	}
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
-    	
 		return "librarian/update";
 	}
 	
@@ -147,13 +138,14 @@ public class LibrarianController {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 			ObjectId object = new ObjectId(id);  
 	    	FindIterable<Document> iterable = db.getCollection("users").find(
 	                new Document("_id", object));
 	    	
+	    	// look if email is valid
 	    	Document doc = iterable.first();
 	    	ValidationService service = new ValidationService();
 			if (!service.validateEmail(email)) {
@@ -171,8 +163,8 @@ public class LibrarianController {
 	    		return "librarian/update";
 	    	}
 	    	
+	    	// update librarian
 	    	if (doc != null) {
-	    		System.out.println("librarian: " + doc.getString("name"));
 	    		Document newdoc = new Document();
 	    		newdoc.append("name", name);
 	    		newdoc.append("email", email);
@@ -184,8 +176,6 @@ public class LibrarianController {
 	    	}
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "redirect:/librarians";
 	}
@@ -197,15 +187,14 @@ public class LibrarianController {
 		if (!type.equals("admin")) {
 			return "home";
 		}
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 			ObjectId object = new ObjectId(id);  
 	    	db.getCollection("users").deleteOne(new Document("_id",object));
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "redirect:/librarians";
 	}

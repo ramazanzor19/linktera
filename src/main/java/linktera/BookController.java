@@ -3,6 +3,7 @@ package linktera;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
 
 import org.bson.Document;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 
@@ -35,13 +35,13 @@ public class BookController {
 	@RequestMapping(value = "/newbook", method = RequestMethod.POST)
     public String newBook(HttpSession session, ModelMap model, @RequestParam String id,
 					@RequestParam String name, @RequestParam String writer,
-					@RequestParam String publisher, @RequestParam String count )  {
+					@RequestParam String publisher, @RequestParam String count)  {
 		
 		String type = (String) session.getAttribute("type");
 		if (type == null) {
 			return "home";
 		}
-		
+		// look if book count is number
 		int book_count;
 		try {
 			book_count = Integer.parseInt(count);
@@ -53,14 +53,14 @@ public class BookController {
     		return "book/new";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
-	    	FindIterable<Document> iterable = db.getCollection("books").find(
+			// look if book is already exist
+			FindIterable<Document> iterable = db.getCollection("books").find(
 	                new Document("name", name).append("publisher", publisher));
 	 
-	    	Document doc = iterable.first();
-	    
+	    	Document doc = iterable.first();   	
 	    	if (doc != null) {
 	    		model.addAttribute("error", "Kitap sistemde kayıtlı");
 	    		model.addAttribute("bookname", name);
@@ -68,6 +68,7 @@ public class BookController {
 	    		model.addAttribute("writer", writer);
 	    		return "book/new";
 	    	}
+	    	// add the book
 	    	doc = new Document();
 	    	doc.append("id", id);
 	    	doc.append("name", name);
@@ -80,10 +81,7 @@ public class BookController {
 	    	System.out.println("new book added");
 	    	
 		} catch (Exception ex) {
-			ex.printStackTrace();
-			
-		} finally {
-			mongoClient.close();
+			ex.printStackTrace();			
 		}
 		return "redirect:/books";
     }
@@ -96,8 +94,8 @@ public class BookController {
 			return "home";
 		}
 		
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try { 
 			List<Document> books = (List<Document>) db.getCollection("books").find().into(
 						new ArrayList<Document>());
@@ -106,8 +104,6 @@ public class BookController {
 			
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "book/all";
 		
@@ -120,15 +116,13 @@ public class BookController {
 		if (type == null) {
 			return "home";
 		}
-		MongoClient mongoClient = new MongoClient();
-    	MongoDatabase db = mongoClient.getDatabase("linktera");
+		ServletContext ctx = session.getServletContext();
+    	MongoDatabase db = (MongoDatabase) ctx.getAttribute("MongoDatabase");
 		try {
 			ObjectId object = new ObjectId(id);  
 	    	db.getCollection("books").deleteOne(new Document("_id",object));
 		} catch (Exception ex) {
 			ex.printStackTrace();
-		} finally {
-			mongoClient.close();
 		}
 		return "redirect:/books";
 	}
